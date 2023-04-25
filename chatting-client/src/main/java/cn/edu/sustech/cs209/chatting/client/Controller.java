@@ -70,6 +70,8 @@ public class Controller implements Initializable {
     @FXML
     public Label currentOnlineCnt;
     @FXML
+    ListView<String> activeUserView;
+    @FXML
     ListView<Message> chatContentList;
     @FXML
     ListView<String> chatList;
@@ -298,6 +300,10 @@ public class Controller implements Initializable {
 
     public void refreshUser(){
         currentOnlineCnt.setText("Total User: "+allUser.size()+", Active User: "+activeUser.size());
+        ObservableList<String> content=activeUserView.getItems();
+        content.setAll(activeUser);
+        activeUserView.setItems(content);
+        activeUserView.refresh();
     }
     public void refreshMessage(){
         buildChatSelection();
