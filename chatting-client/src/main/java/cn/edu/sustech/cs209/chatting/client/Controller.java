@@ -166,6 +166,9 @@ public class Controller implements Initializable {
                         }
                         String name = messages.get(0);
                         activeUser.add(name);
+                        Platform.runLater(() -> {
+                            refreshUser();
+                        });
                         continue;
                     }
                     if (command.equals("Offline")) {
@@ -175,6 +178,9 @@ public class Controller implements Initializable {
                         }
                         String name = messages.get(0);
                         activeUser.remove(name);
+                        Platform.runLater(() -> {
+                            refreshUser();
+                        });
                         continue;
                     }
                     if (command.equals("User")) {
@@ -184,6 +190,9 @@ public class Controller implements Initializable {
                         }
                         String[] names = messages.get(0).split(" ");
                         allUser.addAll(Arrays.asList(names));
+                        Platform.runLater(() -> {
+                            refreshUser();
+                        });
                         continue;
                     }
                     if (command.equals("ActiveUser")) {
@@ -191,8 +200,17 @@ public class Controller implements Initializable {
                             System.out.println("error2.5");
                             continue;
                         }
-                        String[] names = messages.get(0).split(" ");
-                        activeUser.addAll(Arrays.asList(names));
+                        if (!messages.equals("")) {
+                            String[] names = messages.get(0).split(" ");
+//                            System.out.println(names.length);
+                            for (String s:names){
+                                if (s.equals(""))continue;
+                                activeUser.add(s);
+                            }
+                        }
+                        Platform.runLater(() -> {
+                            refreshUser();
+                        });
                         continue;
                     }
                     if (command.equals("InfoGroup")) {
@@ -290,6 +308,9 @@ public class Controller implements Initializable {
         alert.showAndWait();
     }
 
+    public void refreshUser(){
+        currentOnlineCnt.setText("Total User: "+allUser.size()+", Active User: "+activeUser.size());
+    }
     public void refreshMessage(){
         buildChatSelection();
         if (isGroup){
