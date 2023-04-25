@@ -120,7 +120,7 @@ public class Controller implements Initializable {
             online=true;
             try {
                 socket = new Socket("localhost", 8888);
-            }catch (ConnectException e){
+            }catch (Exception e){
                 e.printStackTrace();
                 Platform.runLater(() -> {
                     showError("Connection","Connection break");
@@ -367,11 +367,17 @@ public class Controller implements Initializable {
                 if (client==null){
                     Platform.runLater(() -> {
                         showError("Connection","Connection break");
-                        exit(0);
                     });
+                    exit(0);
                 }
                 else {
-                    client.run();
+                    try {
+                        client.run();
+                    }
+                    catch (Exception e){
+                        e.printStackTrace();
+                        exit(0);
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
