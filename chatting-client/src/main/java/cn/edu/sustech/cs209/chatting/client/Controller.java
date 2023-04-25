@@ -3,26 +3,38 @@ package cn.edu.sustech.cs209.chatting.client;
 import cn.edu.sustech.cs209.chatting.common.Channel;
 import cn.edu.sustech.cs209.chatting.common.Message;
 import cn.edu.sustech.cs209.chatting.common.PrivateMessage;
-import cn.edu.sustech.cs209.chatting.common.User;
 import com.vdurmont.emoji.EmojiParser;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.chart.Chart;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.SelectionMode;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.util.Callback;
+import javafx.util.Pair;
+
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
@@ -35,7 +47,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,14 +58,8 @@ import java.util.ResourceBundle;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
-import javafx.util.Pair;
 
 import static java.lang.System.exit;
-import static java.lang.System.in;
 
 public class Controller implements Initializable {
 
@@ -166,9 +171,7 @@ public class Controller implements Initializable {
                         }
                         String name = messages.get(0);
                         activeUser.add(name);
-                        Platform.runLater(() -> {
-                            refreshUser();
-                        });
+                        Platform.runLater(Controller.this::refreshUser);
                         continue;
                     }
                     if (command.equals("Offline")) {
@@ -178,9 +181,7 @@ public class Controller implements Initializable {
                         }
                         String name = messages.get(0);
                         activeUser.remove(name);
-                        Platform.runLater(() -> {
-                            refreshUser();
-                        });
+                        Platform.runLater(Controller.this::refreshUser);
                         continue;
                     }
                     if (command.equals("User")) {
@@ -190,9 +191,7 @@ public class Controller implements Initializable {
                         }
                         String[] names = messages.get(0).split(" ");
                         allUser.addAll(Arrays.asList(names));
-                        Platform.runLater(() -> {
-                            refreshUser();
-                        });
+                        Platform.runLater(Controller.this::refreshUser);
                         continue;
                     }
                     if (command.equals("ActiveUser")) {
@@ -200,7 +199,7 @@ public class Controller implements Initializable {
                             System.out.println("error2.5");
                             continue;
                         }
-                        if (!messages.equals("")) {
+                        if (!messages.get(0).equals("")) {
                             String[] names = messages.get(0).split(" ");
 //                            System.out.println(names.length);
                             for (String s:names){
@@ -208,9 +207,7 @@ public class Controller implements Initializable {
                                 activeUser.add(s);
                             }
                         }
-                        Platform.runLater(() -> {
-                            refreshUser();
-                        });
+                        Platform.runLater(Controller.this::refreshUser);
                         continue;
                     }
                     if (command.equals("InfoGroup")) {
@@ -238,9 +235,7 @@ public class Controller implements Initializable {
                         String sentBy = messages.get(0);
                         messages.remove(0);
                         Message newMessage = new Message(timestamp, sentBy, messages);
-                        Platform.runLater(() -> {
-                            refreshMessage();
-                        });
+                        Platform.runLater(Controller.this::refreshMessage);
                         for (Channel channel : channelList) {
                             if (channel.id == channelId) {
                                 channel.messageList.add(newMessage);
@@ -262,14 +257,7 @@ public class Controller implements Initializable {
                         messages.remove(0);
                         PrivateMessage newMessage = new PrivateMessage(timestamp, sentBy, sentTo, messages);
                         privateMessageList.add(newMessage);
-                        if (sentTo.equals(chatUsername) || sentBy.equals(chatUsername)) {
-                            List<String> data = new ArrayList<>();
-                            data.add(newMessage.getData());
-                        }
-                        Platform.runLater(() -> {
-                            refreshMessage();
-                        });
-                        continue;
+                        Platform.runLater(Controller.this::refreshMessage);
                     }
 
                 }
@@ -429,15 +417,8 @@ public class Controller implements Initializable {
                     if (elapsedTime >= 10000) {
                         break;
                     }
-                    // 如果waitNameResponse发生变化，跳出循环
                     if (!waitNameResponse) {
                         break;
-                    }
-                    // 休眠100毫秒，避免占用CPU过多
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
                     }
                 }
                 showError();
@@ -454,7 +435,6 @@ public class Controller implements Initializable {
                     chatContentList.setCellFactory(new MessageCellFactory());
                     chatContentList.setCache(false);
                     buildChatSelection();
-                    return;
                 }
             });
 
@@ -477,9 +457,7 @@ public class Controller implements Initializable {
             }
         }
 
-        Platform.runLater(() ->{
-            chatContentList.refresh();
-        });
+        Platform.runLater(chatContentList::refresh);
     }
     public synchronized void buildChatSelection(){
         ObservableList<String> content = chatList.getItems();
@@ -504,12 +482,7 @@ public class Controller implements Initializable {
             if (channel.messageList==null||channel.messageList.isEmpty())continue;
             String sendUser="Channel: "+channel.id+" "+channel.name;
             long timestamp= channel.messageList.get(channel.messageList.size()-1).getTimestamp();
-            if (chat.get(sendUser)!=null){
-                chat.put(sendUser,Math.max(chat.get(sendUser),timestamp));
-            }
-            else {
-                chat.put(sendUser,timestamp);
-            }
+            chat.merge(sendUser, timestamp, Math::max);
         }
         List<String>contentList = chat.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
@@ -517,9 +490,7 @@ public class Controller implements Initializable {
                                 .atZone(ZoneId.of("Asia/Shanghai")).format(DateTimeFormatter.ofPattern("HH:mm"))))
                 .toList();
 
-        for (String s:contentList){
-            content.add(s);
-        }
+        content.addAll(contentList);
         chatList.setItems(content);
         chatList.refresh();
 
@@ -544,18 +515,18 @@ public class Controller implements Initializable {
         isGroup=true;
         isUser=false;
         chatGroupId=groupId;
-        String groupName="group "+groupId+" : ";
+        StringBuilder groupName= new StringBuilder("group " + groupId + " : ");
         chatContentList.getItems().clear();
         for (Channel channel:channelList){
             if (channel.id==groupId){
                 int count=0;
-                groupName+=channel.name+"  ";
+                groupName.append(channel.name).append("  ");
                 for (String username:channel.userList){
                     if (count==3){
-                        groupName += " ... ";
+                        groupName.append(" ... ");
                     }
                     count++;
-                    groupName += username+", ";
+                    groupName.append(username).append(", ");
                 }
                 for (Message message:channel.messageList){
                     chatContentList.getItems().add(message);
@@ -639,9 +610,7 @@ public class Controller implements Initializable {
         // Enable/disable confirm button based on the selection and input
         Node confirmButton = dialog.getDialogPane().lookupButton(confirmButtonType);
         confirmButton.setDisable(true);
-        nameField.textProperty().addListener((observable, oldValue, newValue) -> {
-            confirmButton.setDisable(newValue.trim().isEmpty() || userListView.getSelectionModel().getSelectedItems().isEmpty());
-        });
+        nameField.textProperty().addListener((observable, oldValue, newValue) -> confirmButton.setDisable(newValue.trim().isEmpty() || userListView.getSelectionModel().getSelectedItems().isEmpty()));
         userListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
             confirmButton.setDisable(nameField.getText().trim().isEmpty() || userListView.getSelectionModel().getSelectedItems().isEmpty());
         });
@@ -666,12 +635,12 @@ public class Controller implements Initializable {
             List<String> selectedUsers = pair.getValue();
             selectedUsers.add(username);
             // Do something with the selected group name and users
-            String content="";
+            StringBuilder content= new StringBuilder();
             for (String s:selectedUsers){
-                content += s+" ";
+                content.append(s).append(" ");
             }
-            content+="\n"+groupName+"\n";
-            client.sendMessage("CreateGroup",content);
+            content.append("\n").append(groupName).append("\n");
+            client.sendMessage("CreateGroup", content.toString());
         }
     }
 
