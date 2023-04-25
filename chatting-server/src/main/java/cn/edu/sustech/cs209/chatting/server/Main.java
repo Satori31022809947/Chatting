@@ -6,6 +6,7 @@ import cn.edu.sustech.cs209.chatting.common.User;
 
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class Main {
@@ -21,6 +22,8 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         // 创建一个服务器端 socket，监听端口 12345
+
+        System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
         ServerSocket serverSocket = new ServerSocket(8888);
         System.out.println("Server started.");
         System.out.println(serverSocket);
@@ -32,8 +35,8 @@ public class Main {
             Thread thread = new Thread(() -> {
                 User user=null;
                 try // 获取输入输出流
-                    (Scanner in = new Scanner(clientSocket.getInputStream());
-                    PrintWriter out = new PrintWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
+                    (Scanner in = new Scanner(clientSocket.getInputStream(),StandardCharsets.UTF_8);
+                    PrintWriter out = new PrintWriter(new OutputStreamWriter(clientSocket.getOutputStream(),StandardCharsets.UTF_8));
                     clientSocket ) {
                     // 循环处理客户端发送的消息
                     while (true) {

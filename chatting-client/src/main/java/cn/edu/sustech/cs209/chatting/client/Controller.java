@@ -4,6 +4,7 @@ import cn.edu.sustech.cs209.chatting.common.Channel;
 import cn.edu.sustech.cs209.chatting.common.Message;
 import cn.edu.sustech.cs209.chatting.common.PrivateMessage;
 import cn.edu.sustech.cs209.chatting.common.User;
+import com.vdurmont.emoji.EmojiParser;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -16,14 +17,19 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.chart.Chart;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -48,12 +54,16 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.util.Pair;
 
 import static java.lang.System.exit;
+import static java.lang.System.in;
 
 public class Controller implements Initializable {
 
     @FXML
     public Label currentUsername;
+    @FXML
     public TextArea inputArea;
+    @FXML
+    public Label currentOnlineCnt;
     @FXML
     ListView<Message> chatContentList;
     @FXML
@@ -95,9 +105,9 @@ public class Controller implements Initializable {
             online=true;
             socket= new Socket("localhost",8888);
             try (
-                 Scanner input = new Scanner(socket.getInputStream())
+                 Scanner input = new Scanner(socket.getInputStream(),StandardCharsets.UTF_8)
             ) {
-                output=new PrintWriter(socket.getOutputStream());
+                output=new PrintWriter(new OutputStreamWriter(socket.getOutputStream(),StandardCharsets.UTF_8));
                 while (true) {
                     String command;
                     try {
@@ -210,11 +220,9 @@ public class Controller implements Initializable {
                         String sentBy = messages.get(0);
                         messages.remove(0);
                         Message newMessage = new Message(timestamp, sentBy, messages);
-                        if (isGroup && channelId == chatGroupId) {
-                            Platform.runLater(() -> {
-                                refreshMessage();
-                            });
-                        }
+                        Platform.runLater(() -> {
+                            refreshMessage();
+                        });
                         for (Channel channel : channelList) {
                             if (channel.id == channelId) {
                                 channel.messageList.add(newMessage);
@@ -239,11 +247,10 @@ public class Controller implements Initializable {
                         if (sentTo.equals(chatUsername) || sentBy.equals(chatUsername)) {
                             List<String> data = new ArrayList<>();
                             data.add(newMessage.getData());
-
-                            Platform.runLater(() -> {
-                                refreshMessage();
-                            });
                         }
+                        Platform.runLater(() -> {
+                            refreshMessage();
+                        });
                         continue;
                     }
 
@@ -284,6 +291,7 @@ public class Controller implements Initializable {
     }
 
     public void refreshMessage(){
+        buildChatSelection();
         if (isGroup){
             setGroup(chatGroupId);
         }
@@ -308,6 +316,8 @@ public class Controller implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+
+        System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
         setConnection();
         sceneNumber=0;
         Dialog<Pair<Integer, String > > dialog = new Dialog<>();
@@ -422,6 +432,7 @@ public class Controller implements Initializable {
                     sceneNumber=1;
                     chatContentList.setCellFactory(new MessageCellFactory());
                     chatContentList.setCache(false);
+                    buildChatSelection();
                     return;
                 }
             });
@@ -433,15 +444,15 @@ public class Controller implements Initializable {
         chatUsername=user;
         isGroup=false;
         isUser=true;
-        currentUsername.setText(user);
+        currentUsername.setText("current user" + user);
         System.out.println("set chat user"+user);
         chatContentList.getItems().clear();
         for (PrivateMessage privateMessage:privateMessageList){
             if (privateMessage.sentTo.equals(user)||privateMessage.sentBy.equals(user)) {
                 System.out.println(privateMessage.sentBy+" "+privateMessage.sentTo);
                 List<String>data=new ArrayList<>(); data.add(privateMessage.getData());
-
                 chatContentList.getItems().add(new Message(privateMessage.getTimestamp(),privateMessage.sentBy,data));
+                System.out.println("data="+data);
             }
         }
 
@@ -470,7 +481,7 @@ public class Controller implements Initializable {
 
         for (Channel channel:channelList){
             if (channel.messageList==null||channel.messageList.isEmpty())continue;
-            String sendUser="Channel: "+channel.name+"("+channel.id+")";
+            String sendUser="Channel: "+channel.id+" "+channel.name;
             long timestamp= channel.messageList.get(channel.messageList.size()-1).getTimestamp();
             if (chat.get(sendUser)!=null){
                 chat.put(sendUser,Math.max(chat.get(sendUser),timestamp));
@@ -490,6 +501,22 @@ public class Controller implements Initializable {
         }
         chatList.setItems(content);
         chatList.refresh();
+
+        chatList.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
+                // 在这里处理双击事件
+                String selectedItem = chatList.getSelectionModel().getSelectedItem();
+                if (selectedItem.startsWith("User")){
+                    String userName=selectedItem.split(" ")[1];
+                    setUser(userName);
+                }
+                if (selectedItem.startsWith("Channel")) {
+                    int channelId=Integer.parseInt(selectedItem.split(" ")[1]);
+                    setGroup(channelId);
+                }
+            }
+        });
+        chatList.refresh();
     }
     public synchronized void setGroup(int groupId){
         buildChatSelection();
@@ -501,6 +528,7 @@ public class Controller implements Initializable {
         for (Channel channel:channelList){
             if (channel.id==groupId){
                 int count=0;
+                groupName+=channel.name+"  ";
                 for (String username:channel.userList){
                     if (count==3){
                         groupName += " ... ";
@@ -510,13 +538,11 @@ public class Controller implements Initializable {
                 }
                 for (Message message:channel.messageList){
                     chatContentList.getItems().add(message);
-                    System.out.println("group message: "+message.getData());
                 }
                 break;
             }
         }
-        System.out.println("size="+chatContentList.getItems().size());
-        currentUsername.setText(groupName);
+        currentUsername.setText("current channel "+groupName);
         chatContentList.refresh();
     }
 
@@ -671,7 +697,9 @@ public class Controller implements Initializable {
     @FXML
     public void doSendMessage() throws IOException {
         if (isUser){
-            String content = inputArea.getText();
+            System.out.println("qwq 😊 中文");
+            String content = EmojiParser.parseToUnicode(inputArea.getText());
+            System.out.println(content);
             if (!content.isEmpty())
                 client.sendMessage("SendUser",chatUsername+"\n"+content);
             inputArea.clear();
@@ -707,8 +735,6 @@ public class Controller implements Initializable {
                     nameLabel.setPrefSize(50, 20);
                     nameLabel.setWrapText(true);
                     nameLabel.setStyle("-fx-border-color: black; -fx-border-width: 1px;");
-
-                    System.out.println("render "+msg.info());
                     if (username.equals(msg.getSentBy())) {
                         wrapper.setAlignment(Pos.TOP_RIGHT);
                         wrapper.getChildren().addAll(msgLabel, nameLabel);

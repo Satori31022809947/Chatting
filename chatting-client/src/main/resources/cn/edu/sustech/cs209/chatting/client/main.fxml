@@ -18,7 +18,7 @@
 <VBox prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="cn.edu.sustech.cs209.chatting.client.Controller">
     <MenuBar VBox.vgrow="NEVER">
-        <Menu mnemonicParsing="false" text="chat">
+        <Menu mnemonicParsing="false" text="chat😊">
             <MenuItem mnemonicParsing="false" onAction="#selectPrivateChat" text="New Private Chat"/>
             <MenuItem mnemonicParsing="false" onAction="#createGroupChat" text="New Group Chat"/>
             <MenuItem mnemonicParsing="false" onAction="#selectGroupChat" text="sleect Group Chat"/>
