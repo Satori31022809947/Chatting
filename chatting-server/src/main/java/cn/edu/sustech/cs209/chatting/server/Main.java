@@ -217,6 +217,29 @@ public class Main {
                                 sendToClient(socketUserMap.get(sendTo),"PMessageUser",newMessage.info());
                             }
                         }
+                        if (command.equals("SendFile")){
+                            if (messages.size()<3){
+                                System.out.println("error occur when send file");
+                                sendToClient(clientSocket,"Err","sendFile\nfail because args wroung\n");
+                                continue;
+                            }
+                            String username=messages.get(0);
+                            String filename=messages.get(1);
+                            String message=messages.get(2);
+                            User sendTo=null;
+                            for (User user1:userList){
+                                if (user1.userName.equals(username)) {
+                                    sendTo=user1;
+                                    break;
+                                }
+                            }
+                            if (socketUserMap.get(sendTo)!=null){
+                                sendToClient(socketUserMap.get(sendTo),"PFileUser",filename+"\n"+message);
+                                sendToClient(clientSocket,"Err","sendFile\nsuccess\n");
+                                continue;
+                            }
+                            sendToClient(clientSocket,"Err","sendFile\nUser not online\n");
+                        }
                     }
                     clientSocket.close();
                     clients.remove(clientSocket);

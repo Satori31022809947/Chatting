@@ -31,22 +31,30 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.Pair;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -110,7 +118,16 @@ public class Controller implements Initializable {
         }
         public void run() throws IOException {
             online=true;
-            socket= new Socket("localhost",8888);
+            try {
+                socket = new Socket("localhost", 8888);
+            }catch (ConnectException e){
+                e.printStackTrace();
+                Platform.runLater(() -> {
+                    showError("Connection","Connection break");
+                    exit(0);
+                });
+                return ;
+            }
             try (
                  Scanner input = new Scanner(socket.getInputStream(),StandardCharsets.UTF_8)
             ) {
@@ -261,13 +278,38 @@ public class Controller implements Initializable {
                         privateMessageList.add(newMessage);
                         Platform.runLater(Controller.this::refreshMessage);
                     }
+                    if (command.equals("Err")){
+//                        if (messages.size()>=2) {
+//                            showErr = true;
+//                            errTitle = messages.get(0);
+//                            errContent = messages.get(1);
+//                            Platform.runLater(() -> {
+//                                showError();
+//                            });
+//                        }
+                    }
+                    if (command.equals("PFileUser")){
+                        if (messages.size() < 2) {
+                            System.out.println("error6");
+                            continue;
+                        }
+                        String fileName = messages.get(0);
+                        byte[] content = Base64.getDecoder().decode(messages.get(1));
 
+                        //download to file
+                        String downloadPath = "C:\\Users\\31028\\Documents\\ChatFile";
+                        String filePath = downloadPath + File.separator + fileName;
+
+                        // 将字节数组写入到文件中
+                        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+                            fos.write(content);
+                        }
+                    }
                 }
                 showErr=true;
                 errTitle="Connection";
                 errContent= "Connection break";
                 Platform.runLater(() -> {
-                    showError();
                     exit(0);
                 });
             }
@@ -277,19 +319,19 @@ public class Controller implements Initializable {
             System.out.println("qwq?");
         }
     }
-    public void showError(){
+    public synchronized void showError(){
         if (client.showErr) {
             // 创建一个错误提示框并显示
+            client.showErr=false;
             Alert alert = new Alert(AlertType.INFORMATION);
             alert.setTitle("information");
             alert.setHeaderText(client.errTitle);
             alert.setContentText(client.errContent);
             alert.showAndWait();
-            client.showErr=false;
         }
     }
 
-    public void showError(String title,String content){
+    public synchronized void showError(String title,String content){
         // 创建一个错误提示框并显示
         Alert alert = new Alert(AlertType.INFORMATION);
         alert.setTitle("information");
@@ -298,7 +340,8 @@ public class Controller implements Initializable {
         alert.showAndWait();
     }
 
-    public void refreshUser(){
+    public synchronized void refreshUser(){
+        showError();
         currentOnlineCnt.setText("Total User: "+allUser.size()+", Active User: "+activeUser.size());
         ObservableList<String> content=activeUserView.getItems();
         content.setAll(activeUser);
@@ -321,7 +364,15 @@ public class Controller implements Initializable {
         client=new ClientWebSocket();
         thread = new Thread(() -> {
             try{ // 获取输入输出流
-                client.run();
+                if (client==null){
+                    Platform.runLater(() -> {
+                        showError("Connection","Connection break");
+                        exit(0);
+                    });
+                }
+                else {
+                    client.run();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -707,7 +758,32 @@ public class Controller implements Initializable {
             inputArea.clear();
         }
     }
+    @FXML
+    private Button sendFileButton;
+    @FXML
+    public void doSendFile() throws IOException {
+        if (isUser) {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("选择要发送的文件");
 
+            File selectedFile = fileChooser.showOpenDialog(sendFileButton.getScene().getWindow());
+            if (selectedFile != null) {
+                try {
+                    // 读取文件内容
+                    System.out.println(selectedFile.toPath().getFileName());
+                    String filfName= String.valueOf(selectedFile.toPath().getFileName());
+                    byte[] fileContent = Files.readAllBytes(selectedFile.toPath());
+                    String encoded = Base64.getEncoder().encodeToString(fileContent);
+                    client.sendMessage("SendFile", chatUsername+"\n"+filfName+"\n"+encoded);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
+        else {
+            showError("Sendfile","should send to one user");
+        }
+    }
     /**
      * You may change the cell factory if you changed the design of {@code Message} model.
      * Hint: you may also define a cell factory for the chats displayed in the left panel, or simply override the toString method.
